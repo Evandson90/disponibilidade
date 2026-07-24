@@ -2,6 +2,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 
+function agoraLocal() {
+  const d = new Date(), p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
 export default function Painel() {
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState('');
@@ -43,8 +48,9 @@ export default function Painel() {
   async function logout() { await supabase.auth.signOut(); }
 
   function openEdit(u) {
+    setMsg(null);
     setEditing(u.chave);
-    setForm({ novo_status: u.status, cliente: '', imobiliaria: '', corretor: '', justificativa: '', confirma: false, versao: u.versao });
+    setForm({ novo_status: u.status, cliente: '', imobiliaria: '', corretor: '', gerencia: '', hora_reserva: agoraLocal(), justificativa: '', confirma: false, versao: u.versao });
   }
 
   async function salvar(u) {
@@ -52,7 +58,7 @@ export default function Painel() {
       p_chave: u.chave,
       p_novo_status: form.novo_status,
       p_versao_esperada: form.versao,
-      p_comercial: { cliente: form.cliente, imobiliaria: form.imobiliaria, corretor: form.corretor },
+      p_comercial: { cliente: form.cliente, imobiliaria: form.imobiliaria, corretor: form.corretor, gerencia: form.gerencia, hora_reserva: form.hora_reserva },
       p_confirma: form.confirma,
       p_justificativa: form.justificativa,
       p_origem: 'Painel Web / Vercel'
@@ -81,6 +87,8 @@ export default function Painel() {
     );
   }
 
+  const u = editing ? units.find(x => x.chave === editing) : null;
+
   return (
     <div className="wrap">
       <div className="topbar">
@@ -106,12 +114,13 @@ export default function Painel() {
         </tbody>
       </table>
 
-      {editing && (() => {
-        const u = units.find(x => x.chave === editing);
-        return (
-          <div className="card">
-            <h3>{editing}</h3>
-            <div className="muted">versão atual v{form.versao}</div>
+      {u && (
+        <div onClick={e => { if (e.target === e.currentTarget) setEditing(null); }}
+             style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 100 }}>
+          <div style={{ background: '#181c22', border: '1px solid #2a323c', borderRadius: 12, maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto', padding: 18 }}>
+            <h3 style={{ marginTop: 0 }}>{u.chave}</h3>
+            <div className="muted">versão atual v{form.versao} · status atual: {u.status}</div>
+            {msg && <div className={'msg ' + (msg.t === 'ok' ? 'ok' : 'err')}>{msg.m}</div>}
             <div className="form">
               <label>Novo status
                 <select value={form.novo_status} onChange={e => setForm({ ...form, novo_status: e.target.value })}>
@@ -121,16 +130,18 @@ export default function Painel() {
               <label>Cliente<input value={form.cliente} onChange={e => setForm({ ...form, cliente: e.target.value })} /></label>
               <label>Imobiliária<input value={form.imobiliaria} onChange={e => setForm({ ...form, imobiliaria: e.target.value })} /></label>
               <label>Corretor<input value={form.corretor} onChange={e => setForm({ ...form, corretor: e.target.value })} /></label>
+              <label>Gerente<input value={form.gerencia} onChange={e => setForm({ ...form, gerencia: e.target.value })} /></label>
+              <label>Hora da reserva<input type="datetime-local" value={form.hora_reserva} onChange={e => setForm({ ...form, hora_reserva: e.target.value })} /></label>
               <label>Justificativa<input value={form.justificativa} onChange={e => setForm({ ...form, justificativa: e.target.value })} /></label>
               <label style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <input type="checkbox" checked={form.confirma} onChange={e => setForm({ ...form, confirma: e.target.checked })} /> Confirmar ação crítica
+                <input type="checkbox" checked={form.confirma} onChange={e => setForm({ ...form, confirma: e.target.checked })} /> Confirmar ação crítica (Vendido, Bloqueada, etc.)
               </label>
             </div>
             <button onClick={() => salvar(u)}>Salvar</button>{' '}
             <button className="sm" style={{ background: '#20262e' }} onClick={() => setEditing(null)}>Fechar</button>
           </div>
-        );
-      })()}
+        </div>
+      )}
     </div>
   );
 }
