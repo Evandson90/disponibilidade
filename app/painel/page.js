@@ -36,6 +36,7 @@ export default function Painel() {
     load();
     const ch = supabase.channel('rt-painel')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'unidade' }, () => load())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'status' }, () => load())
       .subscribe();
     return () => supabase.removeChannel(ch);
   }, [session]);
